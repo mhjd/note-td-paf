@@ -1,0 +1,164 @@
+#+TITLE: TD 1
+
+
+* td1
+** Exo 1
+1) 
+Signature :
+(==>) :: Bool -> Bool -> Bool
+Équations :
+(==>) True False = False
+(==>) _ _ = True
+
+
+transitivité -> a R b, b R c -> a R c
+
+la propriété : (on commence par prop, puis à quelle fonction il fait référence, puis ce qu'est la propriété, ça c'est une bonne façon de nommé)
+
+prop_imp_trans :: Bool -> Bool -> Bool -> Bool
+                  A -> B -> C -> propriété vrai ou faux ?
+prop_imp_trans a b c =
+
+
+if (a ==> b) && (b ==> c) then (a ==> c) else True
+
+a b c sont des booléens, la technique c'est de tester tout les cas possible (avec une table de vérité)
+
+1.2
+
+Soit P : |N -> Bool, une propriété
+P(0) et \forall n appartient à |N P(n) => P(n+1) +> \forall n appartion |N P(n)
+
+sum :: Integer -> Integer
+sum 0 = 0
+sum n = n + sum(n-1)
+
+1.4
+
+#+BEGIN_SRC haskell
+promp_sum_gauss :: Integer -> Bool
+promp_sum_gauss n =
+| n < 0 = True
+| otherwise (sum n)  == (n * (n+1)) `div` 2
+#+END_SRC
+
+E = equation
+on nomme les équations 
+
+E1 : sum 0 = 0
+E2 : sum n = n + sum(n-1)
+E3 : n < 0 = True
+E4 : otherwise (sum n)  == (n * (n+1)) `div` 2
+
+Prouvons que la propriété est vrai pour n = 0 (rang initial)
+
+P(0)  promp_sum_gauss 0
+
+|  E4, car n > 0
+|   
+v
+sum 0 == 0 * (0+1) `div` 2
+| E1 
+|
+v
+0 = 0*(0+1) `div` 2
+|(*) , (div)
+v 
+0 == 0
+|   Eg
+v
+true
+_____
+hérédité : 
+
+On suppose P(n) :
+   promp_sum_gauss n
+ |   
+ |   E4
+ v
+sum n == (n*(n+1)) `div` 2           *H1*
+On calcule P(n+1)
+
+   promp_sum_gauss (n+1)
+ |
+ |   E4
+ v
+ sum (n+1) == ((n+1)*(n+1+1)) `div` 2
+ | E3
+ |
+ v
+ 1 + n + sum(n) == ((n+1)*(n+1+1)) `div` 2
+ | *H1*
+ |
+ v
+n+1+(n*(n+2)) `div` 2 == ((n+1)*(n+1+1)) `div` 2
+ | calcul
+ |
+ v
+ (n+1)*(n+2) `div` 2 == ((n+1)*(n+2)) `div` 2
+ | eq
+ |
+ v
+ true
+(j'ai pris en photo)
+
+* 2.1
+
+#+BEGIN_SRC haskell
+  data Cuve =
+	    | CuvePleine Integer
+	    | CuveVide Integer
+	    | Cuve Integer Integer
+  deriving (Show)
+#+END_SRC
+
+
+prop_cuve_inv:: Cuve -> Bool
+
+prop_cuve_inv CuvePleine  c = c > 0
+prop_cuve_inv CuvePleine  c = c > 0
+prop_cuve_inv (Cuve c q )  = (q < c) && (q > 0)
+
+Maybe = option
+Some x = Just x
+None = Nothing 
+
+(initTank dans l'exo)
+#+BEGIN_SRC haskell
+initCuve :: Integer ->  Maybe Cuve 
+initCuve n = CuveVide n | n > 0 = Just (CuveVide n)
+                        | otherwise = Nothing
+#+END_SRC
+
+
+(Preuve que notre fonction initCuve nous produit que des Cuve respectant la propriété)
+Preuve de \forall n : Integer  p     si initCuve n = Just cu 
+                                               alors prop_cuve_inv cu
+quantite :: Cuve -> Integer
+quantite (CuveVide _) =  0
+quantite (CuvePleine c) =  c
+quantite( Cuve _, q) = q
+
+capacite :: Cuve -> Integer
+capacite::Cuve -> Integer
+capacite(CuveVide c) = c
+capacite(CuvePleine c) = c
+capacite(Cuve c _) = c
+
+rempliCuve :: Cuve -> Integer -> Maybe Cuve
+
+On va utiliser une fonction annexe :
+#+BEGIN_SRC haskell
+changeCuve ::  Cuve -> Integer -> Cuve
+changeCuve c quantity | quantity == 0  = CuveVide(capacite c)
+                      | quantity == (capacite c) = CuvePleine (capacite c)
+                      | otherwise (Cuve (capacite c)) quantity
+#+END_SRC
+
+#+BEGIN_SRC haskell
+rempliCuve :: Cuve -> Integer -> Maybe Cuve
+rempliCuve _ quantity | quantity <= 0 = Nothing
+rempliCuve c quantity = let quantity' = (quantite c) + quantity
+                      in if quantity' > (capacite c) then Nothing
+		         else Just(changeCuve c quantity')
+#+END_SRC

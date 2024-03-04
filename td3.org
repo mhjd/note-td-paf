@@ -1,0 +1,129 @@
+#+TITLE: Cours 3
+* Charte
+
+0: Modèle
+1: Somme (états) de produits 
+2: Etat: remarquable 
+3: Constructions intelligente
+4: type de donnée : Invariant -> qu'est-ce qu'un mauvais type ? -> nous aide à définir l'invariant (toujours en exam ?)
+5: opération (?) : pré-condition /  post-condition
+6: Algébriques
+Invariant - précondition - post condition -> très important pour le projet 
+
+invariant : parle d'une donnée, propriété doit être tout le temps vrai 
+précondition - postcondition : propriété qui doit être vrai lors d'une opération
+
+* Modélisation
+#+BEGIN_SRC haskell 
+  data Systeme =
+  Systeme {
+     membres::Map MembreId membre
+     projets:: Map ProjetId Projet
+  }
+    newtype ProjetId = ProjetId Integer
+    newtype MembreId = MembreId Integer
+    newtype InfoLogin = Login Text
+    newtype AdresseMail = Email Text
+    data Membre = Membre {
+  prenom::Text,
+  nom::Text,
+  login::InfoLogin,
+  email :: AdresseMail
+    }
+    data Projet = Projet 
+     {
+    nomComplet :: Text,
+  equipe:: Set MembreId
+  tableaux :: Map TableauId Tableau
+   }
+
+  newtype TableauId = TableauId Text
+  data Tableau = Tableau {
+  cartes :: Seq Carte
+  }
+  data Carte = Carte {
+      nomCarte :: Text
+    description:: Text
+  membreCarte :: Set Membre
+    taches :: Seq Tache
+
+      }
+  data TacheInfo = TacheInfo {
+    descTache::Text,
+  date :: Date
+  }
+  data TacheDeadline = PasDeadline  | DeadLine Date
+  data Date = DateAbtraite
+  data TacheNA = TacheNonAssigne TacheInfo
+  | TacheEnCours TacheInfo  (Set MembreId) Deadline
+  | TacheCompleet TacheInfo (Set MembreId) Date
+
+  ---
+
+  tacheMembre :: Tache -> Set MembreId
+  tacheMembre tacheEc _ s _ = s 
+  tacheMembre tacheCP _ s _ = s
+  tacheMembre tacheNA _  = Set.empty
+
+#+END_SRC
+Login -> constructeur
+Set -> ensemble, pas ordonné, qui peuvent pas avoir de doublons, test d'appartenance en 0(1)
+Seq -> Séquence
+
+Création des invariants :
+il faut prop, et il faut inv dans le nom, je crois
+#+BEGIN_SRC haskell
+  prop_tache_inv_assign :: Task -> Bool
+  prop_tache_inv_assign (TacheNA _) = True
+  prop_tache_inv_assign (TacheEC _ ms _ ) not (Set.null ms)
+  prop_tache_inv_assign(TacheCP _ ms _ ) = not (Set.null ms)
+
+  prop_tache_inv_sync :: Task -> Bool
+  prop_tache_inv_sync (TachenA _) = True
+  -- dateD -> date début , dateF -> date fin
+  prop_tache_inv_sync (TacheCP TacheInfo {dateCree: dateD} _ dateF) = dateF > dateD
+  prop_tache_inv_sync (TacheEC (TacheInfo _ dateD) _ dl = case dl of
+  | TacheIllimite-> True
+  | Deadline datef-> Datef >= dated
+
+  prop_tache_inv Tache -> Bool
+  prop_tache_inv t = (prop_tache_inv_sync t)  && (prop_tache_inv_assign t)
+#+END_SRC
+
+
+#+BEGIN_SRC haskell
+   initTache :: Text -> Date -> Tache
+   initTache t d = TacheNA (TacheInfo t d )
+
+   -- c'est une opération
+   tacheAssign :: Tache -> Set MemberId -> TacheDeadline -> Tache
+   tacheAssign (TacheNA tinfo ) ms dl = TacheInfo ms dl 
+   tacheAssign _ _ _  = error "Tâche déjà assigné"
+
+   --- c'est une précondition
+   prop_pre_tacheAssigne:: Tache -> Set Memberid -> TacheDeadline -> Bool 
+   prop_pre_tacheAssigne (TacheNA (tinfo)) ms dl =  case dl of
+	 Illimite -> (not (SetNull ms))
+	 Deadline d -> (d > = (dateCree tacheinfo)) && (not (SetNull ms))
+   prop_pre_tacheAssigne _ _ _ =  False 
+
+
+  tacheInfo :: Tache -> TacheInfo
+  TNA ti = ti
+  TEC ti _ _ = ti
+  TCP ti _ _ = ti
+  -- les années précédentes on faisait comme ça
+  prop_post_tacheAssigne ::  Tache -> Set MemberId -> Deadline -> Bool
+  -- maintenant : premier argument = la tache avant l'opération, deuxième argument  = la tache après l'op
+  prop_post_tacheAssigne :: Tache -> Tache -> Set MemberId -> Deadline -> Bool
+  prop_post_tacheAssigne ti tf ms dl = case td of
+  | TacheEC tinfo2 ms2 dl2 = (dl2 == dl && ms2 == ms && tinfo2 == (tacheInfo ti))
+  | _ = False
+
+#+END_SRC
+
+les machinId, dans les types d'arguments, je me suis peut-être trompé à plusieurs endroit
+---
+il faut être capable de faire le td, sans pour autant le faire
+
+on peut s'assurer d'avoir compris en faisant l'opération tacheComplete pour pas dépenser trop de temps

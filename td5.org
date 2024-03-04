@@ -1,0 +1,174 @@
+#+title: td5
+
+#+begin_src haskell
+class <nom classe> <variable type a> where
+<fonctions/méthodes :: <variable type a>>
+#+end_src
+
+Peu de chance qu'on fasse des typeclass dans le projet, par contre on va instancier des typeclass
+
+
+N'importe quel type peut être dans la classe si il réalise toutes les méthodes de la classe.
+
+#+begin_src haskell
+import Seq as S
+import Map as M
+  data JSon = 
+    JString Text
+    | JNumber Double
+    | JBool Bool
+    | JNull
+    | JArray (S JSon)
+    | JObject (Map Text JSon)
+  deriving (Show, Eq, Ord)
+#+end_src
+
+Liste de Jon en séquence JSon
+#+begin_src haskell
+  mkArray :: [JSon] -> JSon
+  -- composition de fonction, d'abord fromlist, puis JArray
+  -- JArray est le constructeur JArray
+  mkArray = JArray.S.fromList
+#+end_src
+
+Prend une liste et la transforme en JObject.
+Composition de fonction f.g -> JObject.M.fromList
+#+begin_src haskell
+  mkObject :: [(Text, Json)] -> JSon
+  mkObject = JObject.M.fromList
+#+end_src
+
+
+#+begin_src haskell
+  personJSon :: JSon
+  personJSon = mkObject [
+    ("nom", JString "____"),
+    ("prénom", JString "_____"),
+    ("age", JNumber 0),
+    ("travail", mkObject [("rôle", JString "Son rôle"), ("Société", JString "Sa société")]),
+    ("contacts", mkArray [mkObject ("mél", JString "son mail"), mkObject ("tel", JString "Son tel")])
+			]
+#+end_src
+
+On va faire la classe encode, et pour être dans cette classe, il faut une fonction qui prend l'objet de ce type, et le converti en JSon
+#+begin_src haskell
+  class Encode a where
+    to JSon :: a -> JSon
+
+  prop_loi_encode_inj::(Encode a, Eq a) => a -> a -> Bool
+  prop_loi_encode_inj x y = (x /= y) ==> (toJson x /=  toJson y)
+#+end_src
+
+Écrire une loi :
+prop_loi_classe_qualifielaclasse
+
+inj -> injectivité
+
+Ça c'est une condition : il faut que a instancie Encode et Eq :
+(Encode a, Eq a) => 
+
+implication : ==>
+
+#+begin_src haskell
+  instance EncodeDouble where
+    toJson :: Double -> JSon -- pas obligatoire, haskell peut le deviner
+    toJson = JNumber
+
+    -- fromIntegral : fonction qui va de int dans double
+  instance  Encode Int where
+    toJson = JNumber.fromIntegral
+
+    -- ça, c'est incorrect, car ne respecte pas la loi prop_loi_classe_qualifielaclasse :
+  instance Encode (Int, Int) where
+    toJSon (x, _)  = JNumber(fromIntegral x)
+
+    -- ça c'est correct : 
+  instance Encode (Int, Int) where
+    toJSon (x, y)  = mkArray[ JNumber(fromIntegral x), JNumber(fromIntegral y)]
+
+  instance Encode () where
+    toJSon _ = JNull
+
+	       -- il faut que a instancie encode, pour que ça soit possible
+  instance (Encode a) EncodeSeq (Seq a) where 
+    toJson = JArray.fmap toJson 
+	     -- on peut aussi l'écrire comme ça, sans "point-free" :
+    toJson  xs = JArray (fmap toJson xs)
+
+		 -- v soit dans la classe Encode, et k soit dans la classe Showtext
+  instance (Encode v, ShowText k) =>  Encode (Map k v) where
+    toJson xs = JObject.(M.foldr step M.empty) where step clef val acc = M.insert (showText clef) (toJson val) acc
+
+
+  instance Encode Json where
+    toJson = id -- fonction identité
+
+
+	     -- c'est possible, car toJson est appelable sur les map, à condition que a est de classe Showtext, et b Encode, et on l'a mit en condition :  (Showtext a, Encode b) =>
+  instance (Showtext a, Encode b) => Encode [(a, b)] where
+    toJson = toJson.(M.fromList)
+	     -- exo 1.3, on a un type arborescent, il faut que les types soient dans la classe Encode, donc on commence par faire en sorte que les feuills soient dans la classe Encode
+  instance Encode Contact where
+   toJson (Contact ct info) = 
+     let contype = case ct of
+	   Phone -> "tel"
+	   Email -> "mél"
+     in toJson [(contype, info)] --on a le droit de faire ça, car contype dans showtext et info dans JSon, donc on tombe sur le cas [(a, b)]
+
+  instance Encode Work where
+    toJson (Work comp pos) = toJson [("comp", comp), ("rôle", pos)]
+
+  instance Encode Person where
+    toJson (Personne n p a w c) = toJson [("nom", n), ("prenom", p), ("age", toJson a), ("travail", w), ("Contact", c)]
+				  -- on a pas besoin de faire (a, toJson b), car il suffit que b soit encodable en toJson , et que a soit encodable en showtext  
+				  -- je suis pas sûr du terme "encodable", mais c'est clair, on tombe dans ce cas ci : instance (Showtext a, Encode b) => Encode [(a, b)] where
+#+end_src
+
+
+
+#+begin_src haskell
+  class Decode a where
+    fromJson  :: Json -> Maybe a
+  
+  instance Decode Double where
+    fromJson = decode Double
+
+    decodeDouble:: Json -> Maybe Double
+    decodeDouble (JNumber x) = Just x 
+    decodeDouble _ = Nothing
+
+  instance Decode () where
+    fromJson = decodeUnit
+
+    decodeUnit :: Json -> Maybe Unit
+    decodeUnit JNull -> (Just ())
+    decodeUnit _ -> Nothing
+
+  instance Decode a => Decode (Seq a) where
+    decodeSeq:: JSon -> Maybe (Seq a)
+    decodeSeq (JArray js) = foldr step (Just S.empty) js where
+      step j (Just acc) = case fromJson j of
+			    | Nothing -> Nothing
+			    | Just x -> Just (x :<| acc)
+      step _ Nothing = Nothing
+    decodeSeq  _ = Nothing
+#+end_src
+
+
+2.3)
+#+begin_src haskell
+  -- iso : isomorphe
+  -- le eq est important pour la comparaison
+  prop_loi_decode_iso :: forall a (Encode a, Decode a, Eq a) => a -> Bool 
+  prop_loi_decode_iso x = case fromJson (toJson x)::Maybe a of
+			    | Nothing -> error "Encodage"
+			    | Just y -> x == y
+
+  prop_loi_encode_bis :: (Encode a) => (Json -> a) ->  Json -> Bool 
+    prop_loi_encode_bis j = case (conv j ) of
+    | Nothing -> error "encode"
+    | Just x -> (toJson x) == j
+
+
+  
+#+end_src

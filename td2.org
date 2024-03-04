@@ -1,0 +1,173 @@
+#+TITLE: TD2
+
+cas par défaut
+* Exercice 1
+
+** Question 1
+
+#+BEGIN_SRC haskell
+  safeHead::[a] -> Maybe a
+  safeHead [] = Nothing
+  safeHead (x:_) = Just x
+
+  safeHeadPlus ::  [Integer] -> Integer -> Maybe Integer
+  safeHeadPlus l n = case head l of
+  | Nothing -> Nothing
+  | Just m  -> Just m+n
+#+END_SRC
+
+On garde Maybe Integer pour, dans le cas où ça échoue, bah on continue à échouer.
+
+** Question 2
+
+#+BEGIN_SRC haskell
+  eitherHead :: [a] -> Either EmptyList a
+  eitherHead [] = Left Emptylist
+  eitherHead (x:_) = Right x
+
+  eitherHeadPlus : [Integer] -> Integer -> Either Emptylist Integer
+  eitherHeadPlus l n = case eitherHead l of
+  | Left em -> Left em
+  | Right p -> Right p + m 
+#+END_SRC
+
+* Question 3
+
+Niveau programmation sûre, pas une méthode très bien d'utiliser des valeurs par défaut. Enfin on peut le faire mais il faut le justifier.
+#+BEGIN_SRC haskell
+  defaultHead :: [a] -> a -> a
+  defaultHead [] y = y
+  defaultHead (x:_) _ = x 
+
+  defaultHeadPlus [Integer] -> Integer -> Integer
+  defaultHeadPlus xs n = (defaultHead xs 0) + n 
+#+END_SRC
+
+* Exercice 2
+type paramétré par a : maybe a, either a, 
+
+
+#+BEGIN_SRC haskell
+ data List a =
+Nil
+| Cons a (List a)
+deriving (Show)
+#+END_SRC
+Ce type List est paramétré par a
+
+#+BEGIN_SRC haskell
+foldl :: Foldable t => (b -> a -> b) -> b -> t a -> b
+#+END_SRC
+
+t ça peut être les liste, et a les entier
+Foldable t : on peut replié les t, donc les type
+
+#+BEGIN_SRC haskell
+listFoldl :: (b -> a -> b) -> b -> List a -> b
+listFoldl _ i N = i
+listFoldl f i (Cons x xs) = f (listFoldl f i xs)  x 
+#+END_SRC
+
+#+BEGIN_SRC haskell
+listFoldr :: (b -> a -> b) -> b -> List a -> b
+listFoldr _ i N = i
+listFoldr f i (Cons x xs) = listFoldr f (f i x) xs
+
+#+END_SRC
+
+#+BEGIN_SRC haskell
+    listMap2 :: (a -> b) -> (List a) -> List b
+  listMap2 f = Listfoldr step N
+    where step l x = C (f x) l
+#+END_SRC
+
+** Question 3
+
+#+BEGIN_SRC haskell
+prop_lmap_iso :: (a -> b) -> List a -> Bool
+prop_lmap_iso f xs
+= listMap f xs == listMap2 f xs
+#+END_SRC
+pli = prop_lmap_iso
+
+(il faut ajouter deriving Eq)
+Cas Nil :
+#+BEGIN_SRC
+prop_lmap
+Listmap f Nil == Listmap2 f Nil
+(PF1) Listmap f Nil == Listfoldl step  N N 
+(lF1 ) Listmap f Nil == N 
+(LM1) N == N 
+(Eq List)  True
+#+END_SRC
+
+Cas H  hyp pli f xs  => (pli) Listmap f xs = Listmap2 f xs
+(pli) pli f (C x xs)
+(CM2) C (f x) (CM f xs) == CM2 f (C x xs)
+(lM2) C (fx) (CM f x s ) == lfstep N C (x xs)
+(lf2) C (fx) (LMf xs) == step (Lf step xs) x 
+(step) C (fx) (Lm2 f xs)== C(fx) (lF step N xs)
+(hyp) C (fx) (LM2 f xs) == C (fx) (lf  step N xs)
+(eq) rue
+
+* Exercice 3
+** Question 1
+#+BEGIN_SRC haskell
+  data BTArbre  a = F
+  | D a (BTArbre a) (BTArbre a)
+  | T a (BTArbre a) (BTArbre a) (BTArbre a)
+#+END_SRC
+** Question 2
+#+BEGIN_SRC haskell
+  nDeux :: BTArbre a -> Integer
+  nd F = 0
+  nd (D _ fg fd) = 1 + ((nDeux fg) + (nDeux fd))
+  nd (T _ fg fm fd) = (nDeux fg) + ((nDeux fm) + (nDeux fd))
+
+  profondeur :: BTArbre a -> Integer
+  profondeur f = 0
+  profondeur (D _ fg fd) = 1 + (max (profondeur fg) (profondeur fd))
+  profondeur (T _ fg fm fd) = 1 + (max (profondeur fg (max (profondeur fm) (profondeur fd)))
+
+  prefixe :: BTArbre a -> [a]
+  prefixe F = []
+  prefixe (D v fg fd) = v : (prefixe fg) ++ (prefixe fd)
+  prefixe (T v fg fm fd) = v : (prefixe fg) ++ (prefixe fm) ++ (prefixe fd)
+#+END_SRC
+
+** Question 3
+
+#+BEGIN_SRC
+  p(F) ^ \forall (fg, fd) \in BTArbre, \forall x \in a, p(fg) ^ p(fd) => (P(D x fg fd) ^ \forall (fg, fm, fd) \in BTArbre, \forall x \in a , p(fg) ^ p(fd) ^ p(fm) => P(T x fg fm fd)
+
+
+  =>
+
+  \forall t  \in BTArbre a, P(E) 
+#+END_SRC
+
+** Question 4
+#+BEGIN_SRC haskell
+    arbreMap:: (a -> b) -> BTArbre a -> BTArbre b 
+    arbreMap _ F = F
+    arbreMap f (D x fg fd) = D(fx) (arbreMap f fg) (arbreMap f fd)
+    arbreMap f (T x fg fm fd) = T (fx) (arbreMap f fg) (arbreMap f fm) (arbreMap f fd)
+
+    arbreFold::(b->a->b) -> b -> BTArbre a -> b
+    arbreFold _ i F = i
+    arbreFold f i (D x fg fd) = (1) f (arbreFold (arbreFold i fd) fg) x
+				(2) arbreFold f (f (arbreFold f i fg) x ) fd
+				(3) arbreFold f (arbreFold f (f i x) fg ) fd
+    arbreFold f i (T x f fm fd) = f (arbreFold f (arbreFold f (arbreFold f i fg) fm) fd ) x
+
+    depth :: BTArbre a -> Integer
+    depth = arbreFold step 0 (step 1+)
+
+
+	    -- celui de Peshanski
+    arbreFold :: (b -> b -> a -> b) -> (b -> b -> b -> a -> b) -> b -> BTArbre a -> b
+    arbreFold _ _ i F = i
+    ???? pas bon je prend photo
+    arbreFold f g i (D x fg fd) = v  (arbreFold fg f x fg fd)
+  arbreFold f g i (T x fg fm fd) = 
+#+END_SRC
